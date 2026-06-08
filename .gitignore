@@ -1,0 +1,13 @@
+# PyCharm
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment variables (API keys - never commit these)
+.env
+
+# Database
+worldcup.db
