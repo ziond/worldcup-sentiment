@@ -18,7 +18,7 @@ VAR_WORDS  = ["var", "offside", "penalty", "pen ", "referee", "foul"]
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA foreign_keys = OFF")
     return conn
 
 def init_db():
