@@ -2,30 +2,27 @@
 # database.py
 # Handles all SQLite read/write operations.
 # Only file in the project that speaks SQL.
-#
-# Functions:
-#   init_db()         - create tables if needed
-#   insert_message()  - save one scored message
-#   get_match_sentiment() - read data for dashboard
 # ============================================
 
-import sqlite3
+import psycopg2
 import os
+from dotenv import load_dotenv
 
-DB_PATH = "worldcup.db"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 GOAL_WORDS = ["goal", "gol", "but", "goall", "goool", "scored", "scores"]
 VAR_WORDS  = ["var", "offside", "penalty", "pen ", "referee", "foul"]
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = OFF")
-    return conn
+    return psycopg2.connect(DATABASE_URL)
 
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.executescript("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS teams (
             team_id          TEXT PRIMARY KEY,
             name             TEXT NOT NULL,
@@ -36,25 +33,27 @@ def init_db():
             avg_sentiment    REAL DEFAULT NULL,
             matches_played   INTEGER DEFAULT 0
         );
+    """)
 
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS matches (
-            match_id         TEXT PRIMARY KEY,
-            home_team_id     TEXT,
-            away_team_id     TEXT,
-            kickoff_time     DATETIME,
-            venue            TEXT,
-            stage            TEXT,
-            home_score       INTEGER DEFAULT NULL,
-            away_score       INTEGER DEFAULT NULL,
-            status           TEXT DEFAULT 'upcoming',
-            total_messages   INTEGER DEFAULT 0,
-            avg_sentiment    REAL DEFAULT NULL,
+            match_id          TEXT PRIMARY KEY,
+            home_team_id      TEXT,
+            away_team_id      TEXT,
+            kickoff_time      TIMESTAMP,
+            venue             TEXT,
+            stage             TEXT,
+            home_score        INTEGER DEFAULT NULL,
+            away_score        INTEGER DEFAULT NULL,
+            status            TEXT DEFAULT 'upcoming',
+            total_messages    INTEGER DEFAULT 0,
+            avg_sentiment     REAL DEFAULT NULL,
             peak_positive_min INTEGER DEFAULT NULL,
-            peak_negative_min INTEGER DEFAULT NULL,
-            FOREIGN KEY (home_team_id) REFERENCES teams(team_id),
-            FOREIGN KEY (away_team_id) REFERENCES teams(team_id)
+            peak_negative_min INTEGER DEFAULT NULL
         );
+    """)
 
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS players (
             player_id           TEXT PRIMARY KEY,
             full_name           TEXT NOT NULL,
@@ -67,15 +66,19 @@ def init_db():
             most_positive_score REAL DEFAULT NULL,
             most_negative_score REAL DEFAULT NULL,
             sentiment_trend     TEXT DEFAULT NULL,
-            matches_played      INTEGER DEFAULT 0,
-            FOREIGN KEY (team_id) REFERENCES teams(team_id)
+            matches_played      INTEGER DEFAULT 0
         );
+    """)
 
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS messages (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                SERIAL PRIMARY KEY,
             match_id          TEXT,
-            source            TEXT,        -- 'youtube' | 'twitch' | 'reddit'
-            timestamp         DATETIME,
+            source            TEXT,
+            stream_id         TEXT,
+            stream_title      TEXT,
+            timestamp         TIMESTAMP,
+            message_timestamp TIMESTAMP,
             match_minute      INTEGER,
             author            TEXT,
             text              TEXT,
@@ -94,61 +97,70 @@ def init_db():
             has_goal_word     INTEGER DEFAULT 0,
             has_var_mention   INTEGER DEFAULT 0,
             has_player_name   INTEGER DEFAULT 0,
-            mentioned_players TEXT,        -- Comma-separated IDs: "mbappe_fr,griezmann_fr"
-            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+            mentioned_players TEXT
         );
-
-        -- CRITICAL PERFORMANCE INDEXES FOR ANALYTICS --
-        CREATE INDEX IF NOT EXISTS idx_msg_match_minute ON messages(match_id, match_minute);
-        CREATE INDEX IF NOT EXISTS idx_msg_source ON messages(source);
-        CREATE INDEX IF NOT EXISTS idx_msg_player_flag ON messages(has_player_name) WHERE has_player_name = 1;
-        CREATE INDEX IF NOT EXISTS idx_msg_var_flag ON messages(has_var_mention) WHERE has_var_mention = 1;
     """)
 
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_match_minute ON messages(match_id, match_minute);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_source ON messages(source);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_stream ON messages(stream_id);")
+
     conn.commit()
+    cursor.close()
     conn.close()
 
-def insert_message(match_id: str, source: str, timestamp: str,
-                       match_minute: int, author: str, text: str, scores: dict):
-        # --- text metrics (calculated here so the collector stays dumb) ---
-        words = text.split()
-        caps_chars = sum(1 for c in text if c.isupper())
-        alpha_chars = sum(1 for c in text if c.isalpha())
-        emoji_count = sum(1 for c in text if ord(c) > 127)
+def insert_message(match_id: str, source: str, stream_id: str, stream_title: str,
+                   timestamp: str, message_timestamp: str, match_minute: int,
+                   author: str, text: str, scores: dict):
 
-        conn = get_connection()
-        conn.execute("""
-            INSERT INTO messages (
-                match_id, source, timestamp, match_minute, author, text,
-                vader_compound, vader_positive, vader_negative, vader_neutral,
-                hf_label, hf_score,
-                char_count, word_count, caps_ratio,
-                exclamation_count, question_count, emoji_count,
-                has_goal_word, has_var_mention
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?,
-                ?, ?, ?,
-                ?, ?, ?,
-                ?, ?
-            )
-        """, (
-            match_id, source, timestamp, match_minute, author, text,
-            scores["vader_compound"], scores["vader_positive"],
-            scores["vader_negative"], scores["vader_neutral"],
-            scores["hf_label"], scores["hf_score"],
-            len(text), len(words),
-            round(caps_chars / alpha_chars, 3) if alpha_chars > 0 else 0.0,
-            text.count("!"), text.count("?"), emoji_count,
-            1 if any(w in text.lower() for w in GOAL_WORDS) else 0,
-            1 if any(w in text.lower() for w in VAR_WORDS) else 0
-        ))
-        conn.commit()
-        conn.close()
+    words       = text.split()
+    caps_chars  = sum(1 for c in text if c.isupper())
+    alpha_chars = sum(1 for c in text if c.isalpha())
+    emoji_count = sum(1 for c in text if ord(c) > 127)
+
+    conn   = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO messages (
+            match_id, source, stream_id, stream_title,
+            timestamp, message_timestamp, match_minute,
+            author, text,
+            vader_compound, vader_positive, vader_negative, vader_neutral,
+            hf_label, hf_score,
+            char_count, word_count, caps_ratio,
+            exclamation_count, question_count, emoji_count,
+            has_goal_word, has_var_mention
+        ) VALUES (
+            %s,%s,%s,%s,
+            %s,%s,%s,
+            %s,%s,
+            %s,%s,%s,%s,
+            %s,%s,
+            %s,%s,%s,
+            %s,%s,%s,
+            %s,%s
+        )
+    """, (
+        match_id, source, stream_id, stream_title,
+        timestamp, message_timestamp, match_minute,
+        author, text,
+        scores["vader_compound"], scores["vader_positive"],
+        scores["vader_negative"], scores["vader_neutral"],
+        scores["hf_label"], scores["hf_score"],
+        len(text), len(words),
+        round(caps_chars / alpha_chars, 3) if alpha_chars > 0 else 0.0,
+        text.count("!"), text.count("?"), emoji_count,
+        1 if any(w in text.lower() for w in GOAL_WORDS) else 0,
+        1 if any(w in text.lower() for w in VAR_WORDS) else 0
+    ))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 def get_match_sentiment(match_id: str) -> list:
-    conn = get_connection()
+    conn   = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -157,12 +169,13 @@ def get_match_sentiment(match_id: str) -> list:
             AVG(hf_score) as avg_sentiment,
             COUNT(*) as message_count
         FROM messages
-        WHERE match_id = ?
+        WHERE match_id = %s
         GROUP BY match_minute
         ORDER BY match_minute ASC
     """, (match_id,))
 
     rows = cursor.fetchall()
+    cursor.close()
     conn.close()
 
     return [
@@ -177,4 +190,3 @@ def get_match_sentiment(match_id: str) -> list:
 if __name__ == "__main__":
     init_db()
     print("Database initialized successfully!")
-    print(f"Created: {DB_PATH}")

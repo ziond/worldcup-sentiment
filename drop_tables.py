@@ -1,0 +1,10 @@
+from database import get_connection
+conn = get_connection()
+cur = conn.cursor()
+cur.execute('DROP TABLE IF EXISTS messages')
+cur.execute('DROP TABLE IF EXISTS players')
+cur.execute('DROP TABLE IF EXISTS matches')
+cur.execute('DROP TABLE IF EXISTS teams')
+conn.commit()
+conn.close()
+print('Tables dropped')

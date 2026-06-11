@@ -6,7 +6,7 @@
 # ============================================
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
 from googleapiclient.discovery import build
@@ -14,22 +14,33 @@ from googleapiclient.discovery import build
 from scorer import score_batch
 from database import insert_message
 
+import threading
+
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-def get_live_chat_id(youtube, video_id: str) -> str:
+def get_stream_info(youtube, video_id: str) -> dict:
+    print(f"[{video_id}] Stream not live yet — retrying in 10 mins")
+    time.sleep(600)  # 600 seconds = 10 minutes
     response = youtube.videos().list(
-        part="liveStreamingDetails",
+        part="liveStreamingDetails,snippet",
         id=video_id
     ).execute()
 
-    return response["items"][0]["liveStreamingDetails"]["activeLiveChatId"]
+    item = response["items"][0]
+    return {
+        "live_chat_id": item["liveStreamingDetails"]["activeLiveChatId"],
+        "title":        item["snippet"]["title"],
+        "channel":      item["snippet"]["channelTitle"]
+    }
 
-def collect(video_id: str, match_id: str, match_minute: int):
+def collect_stream(video_id: str, match_id: str, match_minute_tracker: list):
     youtube = build("youtube", "v3", developerKey=API_KEY)
-    live_chat_id = get_live_chat_id(youtube, video_id)
+    info = get_stream_info(youtube, video_id)
+    live_chat_id = info["live_chat_id"]
+    stream_title = f"{info['channel']} — {info['title']}"
 
-    print(f"Connected to live chat: {live_chat_id}")
+    print(f"[{video_id}] Connected: {stream_title}")
 
     next_page_token = None
 
@@ -40,7 +51,10 @@ def collect(video_id: str, match_id: str, match_minute: int):
             pageToken=next_page_token
         ).execute()
 
-        messages = response.get("items", [])
+        messages = [
+            m for m in response.get("items", [])
+            if m["snippet"]["type"] == "textMessageEvent"
+        ]
 
         if messages:
             texts = [m["snippet"]["displayMessage"] for m in messages]
@@ -48,23 +62,50 @@ def collect(video_id: str, match_id: str, match_minute: int):
 
             for m, score in zip(messages, scores):
                 insert_message(
-                    match_id    = match_id,
-                    source      = "youtube",
-                    timestamp   = datetime.utcnow().isoformat(),
-                    match_minute= match_minute,
-                    author      = m["authorDetails"]["displayName"],
-                    text        = m["snippet"]["displayMessage"],
-                    scores      = score
+                    match_id          = match_id,
+                    source            = "youtube",
+                    stream_id         = video_id,
+                    stream_title      = stream_title,
+                    timestamp         = datetime.now(timezone.utc).isoformat(),
+                    message_timestamp = m["snippet"]["publishedAt"],
+                    match_minute      = match_minute_tracker[0],
+                    author            = m["authorDetails"]["displayName"],
+                    text              = m["snippet"]["displayMessage"],
+                    scores            = score
                 )
 
         next_page_token = response.get("nextPageToken")
         wait = response.get("pollingIntervalMillis", 5000) / 1000
-        print(f"Fetched {len(messages)} messages — waiting {wait}s")
+        print(f"[{video_id}] Fetched {len(messages)} messages — waiting {wait}s")
         time.sleep(wait)
+
+def collect(video_ids: list, match_id: str):
+    match_minute_tracker = [1]  # shared list so threads can read it
+
+    threads = []
+    for video_id in video_ids:
+        t = threading.Thread(target=collect_stream, args=(video_id, match_id, match_minute_tracker))
+        t.daemon = True
+        threads.append(t)
+        t.start()
+
+    # increment match minute every 60 seconds
+    while True:
+        time.sleep(60)
+        match_minute_tracker[0] += 1
+        print(f"Match minute: {match_minute_tracker[0]}")
 
 if __name__ == "__main__":
     collect(
-        video_id     = "VmCHJMxtEqE",
-        match_id     = "TEST_MATCH_001",
-        match_minute = 1
+        video_ids=[
+            "C76yNyVe34g",
+            "oYUnkHaa-RY",
+            "lu-94g6raY8",
+            "_nrGYACUQdc",
+            "ZPPqAiHgS8o",
+            "t1Kdo6LVh6A",
+            "Vo67GDNKWI4",
+            "Zssj39qzGtQ"
+        ],
+        match_id  = "MEX_VS_RSA_OPENER"
     )
