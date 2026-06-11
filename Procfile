@@ -1,0 +1,1 @@
+worker: python youtube_collector.py
