@@ -20,19 +20,24 @@ load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 def get_stream_info(youtube, video_id: str) -> dict:
-    print(f"[{video_id}] Stream not live yet — retrying in 10 mins")
-    time.sleep(600)  # 600 seconds = 10 minutes
-    response = youtube.videos().list(
-        part="liveStreamingDetails,snippet",
-        id=video_id
-    ).execute()
+    while True:
+        response = youtube.videos().list(
+            part="liveStreamingDetails,snippet",
+            id=video_id
+        ).execute()
 
-    item = response["items"][0]
-    return {
-        "live_chat_id": item["liveStreamingDetails"]["activeLiveChatId"],
-        "title":        item["snippet"]["title"],
-        "channel":      item["snippet"]["channelTitle"]
-    }
+        item = response["items"][0]
+        details = item.get("liveStreamingDetails", {})
+
+        if "activeLiveChatId" in details:
+            return {
+                "live_chat_id": details["activeLiveChatId"],
+                "title":        item["snippet"]["title"],
+                "channel":      item["snippet"]["channelTitle"]
+            }
+
+        print(f"[{video_id}] Stream not live yet — retrying in 10 mins")
+        time.sleep(600)
 
 def collect_stream(video_id: str, match_id: str, match_minute_tracker: list):
     youtube = build("youtube", "v3", developerKey=API_KEY)
