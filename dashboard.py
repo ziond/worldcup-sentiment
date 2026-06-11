@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 import psycopg2
 import os
 from dotenv import load_dotenv
-
+import time
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -267,4 +267,5 @@ with bottom_col1:
 with bottom_col2:
     st.markdown("<p style='text-align: right; font-size: 12px; color: #8b949e;'>Auto-refreshes every 10 seconds</p>",
                 unsafe_allow_html=True)
-st.markdown('<meta http-equiv="refresh" content="10">', unsafe_allow_html=True)
+time.sleep(10)
+st.rerun()
