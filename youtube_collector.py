@@ -6,7 +6,7 @@
 # ============================================
 
 import time
-from datetime import datetime, timezone,timedelta
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 import os
 from googleapiclient.discovery import build
@@ -18,6 +18,7 @@ import threading
 
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
+
 
 def get_stream_info(youtube, video_id: str) -> dict:
     while True:
@@ -38,6 +39,7 @@ def get_stream_info(youtube, video_id: str) -> dict:
 
         print(f"[{video_id}] Stream not live yet — retrying in 10 mins")
         time.sleep(600)
+
 
 def collect_stream(video_id: str, match_id: str, match_minute_tracker: list):
     youtube = build("youtube", "v3", developerKey=API_KEY)
@@ -100,7 +102,7 @@ def collect_stream(video_id: str, match_id: str, match_minute_tracker: list):
                 )
 
         next_page_token = response.get("nextPageToken")
-        wait = 60  # poll every 60 seconds
+        wait = 60 # poll every 60 seconds
         print(f"[{video_id}] Fetched {len(messages)} messages — waiting 60s")
         time.sleep(wait)
 
@@ -121,18 +123,21 @@ def collect(video_ids: list, match_id: str):
         match_minute_tracker[0] += 1
         print(f"Match minute: {match_minute_tracker[0]}")
 
+
 if __name__ == "__main__":
     collect(
         video_ids=[
-            "JmIkuJ_1MtM",
-            "2-xtwVI3z0U",
-            "dikp479jrLk",
-            "rcX5Nax4gSc",
-            "t_8VNURsxps",
-            "BJpxcVoiG70",
-            "QMte7AeTS_E",
-            "pjpdJU3linQ",
-            "w06wB0wWUGI"
+            "pzmYIbzQuVk",
+            "8u9xZwUTuvw",
+            "YIiHQQE3NMQ",
+            "CMNkRNOCTTw",
+            "aa4-NNyMDZw",
+            "DyFcCE-xa1c",
+            "4JmxLLn8KWY",
+            "H8r2m8UdviE",
+            "_TkgNWcbsTw",
         ],
-        match_id  = "SOU_VS_CZE"
+
+        match_id = "FRA_VS_SEN_GRP"
+
     )
