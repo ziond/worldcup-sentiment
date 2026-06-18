@@ -11,3 +11,7 @@ __pycache__/
 
 # Database
 worldcup.db
+
+# Local dev / private files
+search_test.py
+CLAUDE_CONTEXT.md
