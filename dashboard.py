@@ -230,7 +230,8 @@ def render_match(match_id: str):
                 showlegend=False
             )
 
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig, width='stretch', config={'displayModeBar': False},
+                            key=f"chart_{match_id}_{stream_id}")
 
         with right_layout:
             st.markdown(
@@ -263,7 +264,8 @@ def render_match(match_id: str):
                         "Score": st.column_config.TextColumn("Score", width="small"),
                     },
                     hide_index=True,
-                    use_container_width=True
+                    width='stretch',
+                    key=f"feed_{match_id}_{stream_id}"
                 )
 
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -276,28 +278,28 @@ with tabs[0]:
     if not test_ids:
         st.info("No data collected yet for this matchday.")
     else:
-        match_id = st.selectbox("Select Match", test_ids, label_visibility="collapsed")
+        match_id = st.selectbox("Select Match", test_ids, label_visibility="collapsed", key="select_test")
         render_match(match_id)
 
 with tabs[1]:
     if not md1_ids:
         st.info("No data collected yet for this matchday.")
     else:
-        match_id = st.selectbox("Select Match", md1_ids, label_visibility="collapsed")
+        match_id = st.selectbox("Select Match", md1_ids, label_visibility="collapsed", key="select_md1")
         render_match(match_id)
 
 with tabs[2]:
     if not md2_ids:
         st.info("No data collected yet for this matchday.")
     else:
-        match_id = st.selectbox("Select Match", md2_ids, label_visibility="collapsed")
+        match_id = st.selectbox("Select Match", md2_ids, label_visibility="collapsed", key="select_md2")
         render_match(match_id)
 
 with tabs[3]:
     if not md3_ids:
         st.info("No data collected yet for this matchday.")
     else:
-        match_id = st.selectbox("Select Match", md3_ids, label_visibility="collapsed")
+        match_id = st.selectbox("Select Match", md3_ids, label_visibility="collapsed", key="select_md3")
         render_match(match_id)
 
 # --- AUTO REFRESH AUTOMATION ---
