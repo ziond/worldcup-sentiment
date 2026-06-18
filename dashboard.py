@@ -80,9 +80,10 @@ def get_streams(match_id: str) -> list:
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT DISTINCT stream_id, stream_title
+        SELECT stream_id, MAX(stream_title) as stream_title
         FROM messages
         WHERE match_id = %s
+        GROUP BY stream_id
     """, (match_id,))
     rows = cur.fetchall()
     conn.close()
@@ -137,7 +138,7 @@ md2_ids  = [mid for mid in matches if "Matchday 2" in _mode_to_matchday.get(mid,
 md3_ids  = [mid for mid in matches if "Matchday 3" in _mode_to_matchday.get(mid, "")]
 
 
-def render_match(match_id: str):
+def render_match(match_id: str, tab_key: str = ""):
     # --- GLOBAL KEY PERFORMANCE INDICATORS ---
     stats = get_match_stats(match_id)
     st.markdown("<div class='stream-header'>Key Performance Indicators</div>", unsafe_allow_html=True)
@@ -231,7 +232,7 @@ def render_match(match_id: str):
             )
 
             st.plotly_chart(fig, width='stretch', config={'displayModeBar': False},
-                            key=f"chart_{match_id}_{stream_id}")
+                            key=f"chart_{tab_key}_{match_id}_{stream_id}")
 
         with right_layout:
             st.markdown(
@@ -265,7 +266,7 @@ def render_match(match_id: str):
                     },
                     hide_index=True,
                     width='stretch',
-                    key=f"feed_{match_id}_{stream_id}"
+                    key=f"feed_{tab_key}_{match_id}_{stream_id}"
                 )
 
         st.markdown("<br><br>", unsafe_allow_html=True)
@@ -279,28 +280,28 @@ with tabs[0]:
         st.info("No data collected yet for this matchday.")
     else:
         match_id = st.selectbox("Select Match", test_ids, label_visibility="collapsed", key="select_test")
-        render_match(match_id)
+        render_match(match_id, tab_key="test")
 
 with tabs[1]:
     if not md1_ids:
         st.info("No data collected yet for this matchday.")
     else:
         match_id = st.selectbox("Select Match", md1_ids, label_visibility="collapsed", key="select_md1")
-        render_match(match_id)
+        render_match(match_id, tab_key="md1")
 
 with tabs[2]:
     if not md2_ids:
         st.info("No data collected yet for this matchday.")
     else:
         match_id = st.selectbox("Select Match", md2_ids, label_visibility="collapsed", key="select_md2")
-        render_match(match_id)
+        render_match(match_id, tab_key="md2")
 
 with tabs[3]:
     if not md3_ids:
         st.info("No data collected yet for this matchday.")
     else:
         match_id = st.selectbox("Select Match", md3_ids, label_visibility="collapsed", key="select_md3")
-        render_match(match_id)
+        render_match(match_id, tab_key="md3")
 
 # --- AUTO REFRESH AUTOMATION ---
 st.markdown("<hr style='border-color: #21262d;'/>", unsafe_allow_html=True)
