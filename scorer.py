@@ -25,14 +25,14 @@ _vader = SentimentIntensityAnalyzer()
 # HuggingFace setup (downloads model first time only ~500MB)
 _hf = pipeline(
     "sentiment-analysis",
-    model="cardiffnlp/twitter-roberta-base-sentiment",
+    model="cardiffnlp/twitter-xlm-roberta-base-sentiment",
     device=-1  # 0 = use your GPU (4060), -1 = CPU
 )
 
 HF_LABELS = {
-    "LABEL_0": "NEGATIVE",
-    "LABEL_1": "NEUTRAL",
-    "LABEL_2": "POSITIVE"
+    "negative": "NEGATIVE",
+    "neutral":  "NEUTRAL",
+    "positive": "POSITIVE"
 }
 
 def score(text: str) -> dict:

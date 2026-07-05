@@ -1,7 +1,7 @@
 # =========================================================================
 # 2026 FIFA WORLD CUP - MASTER GROUP STAGE STREAM MONITOR CONFIGURATION
 # Matches Remaining: 48 Group Stage Matches Left
-# Time Zone Auto-Conversion: Local Time (ADT - Atlantic Daylight Time)
+# Time Zone: UTC (Coordinated Universal Time)
 # =========================================================================
 
 # 1. UNIVERSAL SEARCH MATRIX
@@ -34,7 +34,7 @@ MATCHES_SCHEDULE = [
         "mode": "czech_republic_vs_south_africa",
         "team_1": "Czech Republic",
         "team_2": "South Africa",
-        "kickoff_adt": "13:00:00",
+        "kickoff_utc_iso": "2026-06-18T16:00:00Z",
         "keywords": [
             "Czech Republic vs South Africa",
             "Czech Republic v South Africa",
@@ -64,7 +64,7 @@ MATCHES_SCHEDULE = [
         "mode": "switzerland_vs_bosnia__and_herzegovina",
         "team_1": "Switzerland",
         "team_2": "Bosnia & Herzegovina",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-18T20:00:00Z",
         "keywords": [
             "Switzerland vs Bosnia & Herzegovina",
             "Switzerland v Bosnia & Herzegovina",
@@ -97,7 +97,7 @@ MATCHES_SCHEDULE = [
         "mode": "canada_vs_qatar",
         "team_1": "Canada",
         "team_2": "Qatar",
-        "kickoff_adt": "19:00:00",
+        "kickoff_utc_iso": "2026-06-18T22:00:00Z",
         "keywords": [
             "Canada vs Qatar",
             "Canada v Qatar",
@@ -127,7 +127,7 @@ MATCHES_SCHEDULE = [
         "mode": "mexico_vs_south_korea",
         "team_1": "Mexico",
         "team_2": "South Korea",
-        "kickoff_adt": "22:00:00",
+        "kickoff_utc_iso": "2026-06-19T01:00:00Z",
         "keywords": [
             "Mexico vs South Korea",
             "Mexico v South Korea",
@@ -160,7 +160,7 @@ MATCHES_SCHEDULE = [
         "mode": "usa_vs_australia",
         "team_1": "USA",
         "team_2": "Australia",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-19T19:00:00Z",
         "keywords": [
             "USA vs Australia",
             "USA v Australia",
@@ -190,7 +190,7 @@ MATCHES_SCHEDULE = [
         "mode": "scotland_vs_morocco",
         "team_1": "Scotland",
         "team_2": "Morocco",
-        "kickoff_adt": "19:00:00",
+        "kickoff_utc_iso": "2026-06-19T22:00:00Z",
         "keywords": [
             "Scotland vs Morocco",
             "Scotland v Morocco",
@@ -220,7 +220,7 @@ MATCHES_SCHEDULE = [
         "mode": "brazil_vs_haiti",
         "team_1": "Brazil",
         "team_2": "Haiti",
-        "kickoff_adt": "21:30:00",
+        "kickoff_utc_iso": "2026-06-20T00:30:00Z",
         "keywords": [
             "Brazil vs Haiti",
             "Brazil v Haiti",
@@ -250,7 +250,7 @@ MATCHES_SCHEDULE = [
         "mode": "turkey_vs_paraguay",
         "team_1": "Turkey",
         "team_2": "Paraguay",
-        "kickoff_adt": "00:00:00",
+        "kickoff_utc_iso": "2026-06-20T04:00:00Z",
         "keywords": [
             "Turkey vs Paraguay",
             "Turkey v Paraguay",
@@ -267,9 +267,9 @@ MATCHES_SCHEDULE = [
             "paraguay",
             "TURKEY",
             "PARAGUAY",
-            "T\u00fcrkiye",
-            "t\u00fcrkiye",
-            "T\u00dcRKIYE",
+            "Türkiye",
+            "türkiye",
+            "TÜRKIYE",
             "TURPAR",
             "turpar",
             "TUR vs PAR",
@@ -283,7 +283,7 @@ MATCHES_SCHEDULE = [
         "mode": "netherlands_vs_sweden",
         "team_1": "Netherlands",
         "team_2": "Sweden",
-        "kickoff_adt": "14:00:00",
+        "kickoff_utc_iso": "2026-06-20T17:00:00Z",
         "keywords": [
             "Netherlands vs Sweden",
             "Netherlands v Sweden",
@@ -313,7 +313,7 @@ MATCHES_SCHEDULE = [
         "mode": "germany_vs_ivory_coast",
         "team_1": "Germany",
         "team_2": "Ivory Coast",
-        "kickoff_adt": "17:00:00",
+        "kickoff_utc_iso": "2026-06-20T20:00:00Z",
         "keywords": [
             "Germany vs Ivory Coast",
             "Germany v Ivory Coast",
@@ -346,7 +346,7 @@ MATCHES_SCHEDULE = [
         "mode": "ecuador_vs_curacao",
         "team_1": "Ecuador",
         "team_2": "Curacao",
-        "kickoff_adt": "21:00:00",
+        "kickoff_utc_iso": "2026-06-21T01:00:00Z",
         "keywords": [
             "Ecuador vs Curacao",
             "Ecuador v Curacao",
@@ -363,9 +363,9 @@ MATCHES_SCHEDULE = [
             "curacao",
             "ECUADOR",
             "CURACAO",
-            "Cura\u00e7ao",
-            "cura\u00e7ao",
-            "CURA\u00c7AO",
+            "Curaçao",
+            "curaçao",
+            "CURAÇAO",
             "ECUCUW",
             "ecucuw",
             "ECU vs CUW",
@@ -379,7 +379,7 @@ MATCHES_SCHEDULE = [
         "mode": "tunisia_vs_japan",
         "team_1": "Tunisia",
         "team_2": "Japan",
-        "kickoff_adt": "01:00:00",
+        "kickoff_utc_iso": "2026-06-21T04:00:00Z",
         "keywords": [
             "Tunisia vs Japan",
             "Tunisia v Japan",
@@ -409,7 +409,7 @@ MATCHES_SCHEDULE = [
         "mode": "spain_vs_saudi_arabia",
         "team_1": "Spain",
         "team_2": "Saudi Arabia",
-        "kickoff_adt": "13:00:00",
+        "kickoff_utc_iso": "2026-06-21T16:00:00Z",
         "keywords": [
             "Spain vs Saudi Arabia",
             "Spain v Saudi Arabia",
@@ -439,7 +439,7 @@ MATCHES_SCHEDULE = [
         "mode": "belgium_vs_iran",
         "team_1": "Belgium",
         "team_2": "Iran",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-21T19:00:00Z",
         "keywords": [
             "Belgium vs Iran",
             "Belgium v Iran",
@@ -469,7 +469,7 @@ MATCHES_SCHEDULE = [
         "mode": "uruguay_vs_cape_verde",
         "team_1": "Uruguay",
         "team_2": "Cape Verde",
-        "kickoff_adt": "19:00:00",
+        "kickoff_utc_iso": "2026-06-21T22:00:00Z",
         "keywords": [
             "Uruguay vs Cape Verde",
             "Uruguay v Cape Verde",
@@ -502,7 +502,7 @@ MATCHES_SCHEDULE = [
         "mode": "new_zealand_vs_egypt",
         "team_1": "New Zealand",
         "team_2": "Egypt",
-        "kickoff_adt": "22:00:00",
+        "kickoff_utc_iso": "2026-06-22T01:00:00Z",
         "keywords": [
             "New Zealand vs Egypt",
             "New Zealand v Egypt",
@@ -532,7 +532,7 @@ MATCHES_SCHEDULE = [
         "mode": "argentina_vs_austria",
         "team_1": "Argentina",
         "team_2": "Austria",
-        "kickoff_adt": "14:00:00",
+        "kickoff_utc_iso": "2026-06-22T17:00:00Z",
         "keywords": [
             "Argentina vs Austria",
             "Argentina v Austria",
@@ -562,7 +562,7 @@ MATCHES_SCHEDULE = [
         "mode": "france_vs_iraq",
         "team_1": "France",
         "team_2": "Iraq",
-        "kickoff_adt": "18:00:00",
+        "kickoff_utc_iso": "2026-06-22T21:00:00Z",
         "keywords": [
             "France vs Iraq",
             "France v Iraq",
@@ -592,7 +592,7 @@ MATCHES_SCHEDULE = [
         "mode": "norway_vs_senegal",
         "team_1": "Norway",
         "team_2": "Senegal",
-        "kickoff_adt": "21:00:00",
+        "kickoff_utc_iso": "2026-06-23T00:00:00Z",
         "keywords": [
             "Norway vs Senegal",
             "Norway v Senegal",
@@ -622,7 +622,7 @@ MATCHES_SCHEDULE = [
         "mode": "jordan_vs_algeria",
         "team_1": "Jordan",
         "team_2": "Algeria",
-        "kickoff_adt": "00:00:00",
+        "kickoff_utc_iso": "2026-06-23T03:00:00Z",
         "keywords": [
             "Jordan vs Algeria",
             "Jordan v Algeria",
@@ -652,7 +652,7 @@ MATCHES_SCHEDULE = [
         "mode": "portugal_vs_uzbekistan",
         "team_1": "Portugal",
         "team_2": "Uzbekistan",
-        "kickoff_adt": "14:00:00",
+        "kickoff_utc_iso": "2026-06-23T17:00:00Z",
         "keywords": [
             "Portugal vs Uzbekistan",
             "Portugal v Uzbekistan",
@@ -682,7 +682,7 @@ MATCHES_SCHEDULE = [
         "mode": "england_vs_ghana",
         "team_1": "England",
         "team_2": "Ghana",
-        "kickoff_adt": "17:00:00",
+        "kickoff_utc_iso": "2026-06-23T20:00:00Z",
         "keywords": [
             "England vs Ghana",
             "England v Ghana",
@@ -712,7 +712,7 @@ MATCHES_SCHEDULE = [
         "mode": "panama_vs_croatia",
         "team_1": "Panama",
         "team_2": "Croatia",
-        "kickoff_adt": "20:00:00",
+        "kickoff_utc_iso": "2026-06-23T23:00:00Z",
         "keywords": [
             "Panama vs Croatia",
             "Panama v Croatia",
@@ -742,7 +742,7 @@ MATCHES_SCHEDULE = [
         "mode": "colombia_vs_dr_congo",
         "team_1": "Colombia",
         "team_2": "DR Congo",
-        "kickoff_adt": "23:00:00",
+        "kickoff_utc_iso": "2026-06-24T02:00:00Z",
         "keywords": [
             "Colombia vs DR Congo",
             "Colombia v DR Congo",
@@ -777,7 +777,7 @@ MATCHES_SCHEDULE = [
         "mode": "switzerland_vs_canada",
         "team_1": "Switzerland",
         "team_2": "Canada",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-24T19:00:00Z",
         "keywords": [
             "Switzerland vs Canada",
             "Switzerland v Canada",
@@ -807,7 +807,7 @@ MATCHES_SCHEDULE = [
         "mode": "bosnia__and_herzegovina_vs_qatar",
         "team_1": "Bosnia & Herzegovina",
         "team_2": "Qatar",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-24T19:00:00Z",
         "keywords": [
             "Bosnia & Herzegovina vs Qatar",
             "Bosnia & Herzegovina v Qatar",
@@ -840,7 +840,7 @@ MATCHES_SCHEDULE = [
         "mode": "morocco_vs_haiti",
         "team_1": "Morocco",
         "team_2": "Haiti",
-        "kickoff_adt": "19:00:00",
+        "kickoff_utc_iso": "2026-06-24T22:00:00Z",
         "keywords": [
             "Morocco vs Haiti",
             "Morocco v Haiti",
@@ -870,7 +870,7 @@ MATCHES_SCHEDULE = [
         "mode": "scotland_vs_brazil",
         "team_1": "Scotland",
         "team_2": "Brazil",
-        "kickoff_adt": "19:00:00",
+        "kickoff_utc_iso": "2026-06-24T22:00:00Z",
         "keywords": [
             "Scotland vs Brazil",
             "Scotland v Brazil",
@@ -900,7 +900,7 @@ MATCHES_SCHEDULE = [
         "mode": "south_africa_vs_south_korea",
         "team_1": "South Africa",
         "team_2": "South Korea",
-        "kickoff_adt": "22:00:00",
+        "kickoff_utc_iso": "2026-06-25T01:00:00Z",
         "keywords": [
             "South Africa vs South Korea",
             "South Africa v South Korea",
@@ -933,7 +933,7 @@ MATCHES_SCHEDULE = [
         "mode": "czech_republic_vs_mexico",
         "team_1": "Czech Republic",
         "team_2": "Mexico",
-        "kickoff_adt": "22:00:00",
+        "kickoff_utc_iso": "2026-06-25T01:00:00Z",
         "keywords": [
             "Czech Republic vs Mexico",
             "Czech Republic v Mexico",
@@ -963,7 +963,7 @@ MATCHES_SCHEDULE = [
         "mode": "curacao_vs_ivory_coast",
         "team_1": "Curacao",
         "team_2": "Ivory Coast",
-        "kickoff_adt": "17:00:00",
+        "kickoff_utc_iso": "2026-06-25T20:00:00Z",
         "keywords": [
             "Curacao vs Ivory Coast",
             "Curacao v Ivory Coast",
@@ -980,9 +980,9 @@ MATCHES_SCHEDULE = [
             "ivory coast",
             "CURACAO",
             "IVORY COAST",
-            "Cura\u00e7ao",
-            "cura\u00e7ao",
-            "CURA\u00c7AO",
+            "Curaçao",
+            "curaçao",
+            "CURAÇAO",
             "Cote d'Ivoire",
             "cote d'ivoire",
             "COTE D'IVOIRE",
@@ -999,7 +999,7 @@ MATCHES_SCHEDULE = [
         "mode": "ecuador_vs_germany",
         "team_1": "Ecuador",
         "team_2": "Germany",
-        "kickoff_adt": "17:00:00",
+        "kickoff_utc_iso": "2026-06-25T20:00:00Z",
         "keywords": [
             "Ecuador vs Germany",
             "Ecuador v Germany",
@@ -1029,7 +1029,7 @@ MATCHES_SCHEDULE = [
         "mode": "tunisia_vs_netherlands",
         "team_1": "Tunisia",
         "team_2": "Netherlands",
-        "kickoff_adt": "20:00:00",
+        "kickoff_utc_iso": "2026-06-25T23:00:00Z",
         "keywords": [
             "Tunisia vs Netherlands",
             "Tunisia v Netherlands",
@@ -1059,7 +1059,7 @@ MATCHES_SCHEDULE = [
         "mode": "japan_vs_sweden",
         "team_1": "Japan",
         "team_2": "Sweden",
-        "kickoff_adt": "20:00:00",
+        "kickoff_utc_iso": "2026-06-25T23:00:00Z",
         "keywords": [
             "Japan vs Sweden",
             "Japan v Sweden",
@@ -1089,7 +1089,7 @@ MATCHES_SCHEDULE = [
         "mode": "turkey_vs_usa",
         "team_1": "Turkey",
         "team_2": "USA",
-        "kickoff_adt": "23:00:00",
+        "kickoff_utc_iso": "2026-06-26T02:00:00Z",
         "keywords": [
             "Turkey vs USA",
             "Turkey v USA",
@@ -1106,9 +1106,9 @@ MATCHES_SCHEDULE = [
             "usa",
             "TURKEY",
             "USA",
-            "T\u00fcrkiye",
-            "t\u00fcrkiye",
-            "T\u00dcRKIYE",
+            "Türkiye",
+            "türkiye",
+            "TÜRKIYE",
             "TURUSA",
             "turusa",
             "TUR vs USA",
@@ -1122,7 +1122,7 @@ MATCHES_SCHEDULE = [
         "mode": "paraguay_vs_australia",
         "team_1": "Paraguay",
         "team_2": "Australia",
-        "kickoff_adt": "23:00:00",
+        "kickoff_utc_iso": "2026-06-26T02:00:00Z",
         "keywords": [
             "Paraguay vs Australia",
             "Paraguay v Australia",
@@ -1152,7 +1152,7 @@ MATCHES_SCHEDULE = [
         "mode": "norway_vs_france",
         "team_1": "Norway",
         "team_2": "France",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-26T19:00:00Z",
         "keywords": [
             "Norway vs France",
             "Norway v France",
@@ -1182,7 +1182,7 @@ MATCHES_SCHEDULE = [
         "mode": "senegal_vs_iraq",
         "team_1": "Senegal",
         "team_2": "Iraq",
-        "kickoff_adt": "16:00:00",
+        "kickoff_utc_iso": "2026-06-26T19:00:00Z",
         "keywords": [
             "Senegal vs Iraq",
             "Senegal v Iraq",
@@ -1212,7 +1212,7 @@ MATCHES_SCHEDULE = [
         "mode": "cape_verde_vs_saudi_arabia",
         "team_1": "Cape Verde",
         "team_2": "Saudi Arabia",
-        "kickoff_adt": "21:00:00",
+        "kickoff_utc_iso": "2026-06-27T00:00:00Z",
         "keywords": [
             "Cape Verde vs Saudi Arabia",
             "Cape Verde v Saudi Arabia",
@@ -1245,7 +1245,7 @@ MATCHES_SCHEDULE = [
         "mode": "uruguay_vs_spain",
         "team_1": "Uruguay",
         "team_2": "Spain",
-        "kickoff_adt": "21:00:00",
+        "kickoff_utc_iso": "2026-06-27T00:00:00Z",
         "keywords": [
             "Uruguay vs Spain",
             "Uruguay v Spain",
@@ -1275,7 +1275,7 @@ MATCHES_SCHEDULE = [
         "mode": "new_zealand_vs_belgium",
         "team_1": "New Zealand",
         "team_2": "Belgium",
-        "kickoff_adt": "23:59:00",
+        "kickoff_utc_iso": "2026-06-27T03:00:00Z",
         "keywords": [
             "New Zealand vs Belgium",
             "New Zealand v Belgium",
@@ -1305,7 +1305,7 @@ MATCHES_SCHEDULE = [
         "mode": "egypt_vs_iran",
         "team_1": "Egypt",
         "team_2": "Iran",
-        "kickoff_adt": "23:59:00",
+        "kickoff_utc_iso": "2026-06-27T03:00:00Z",
         "keywords": [
             "Egypt vs Iran",
             "Egypt v Iran",
@@ -1335,7 +1335,7 @@ MATCHES_SCHEDULE = [
         "mode": "panama_vs_england",
         "team_1": "Panama",
         "team_2": "England",
-        "kickoff_adt": "18:00:00",
+        "kickoff_utc_iso": "2026-06-27T21:00:00Z",
         "keywords": [
             "Panama vs England",
             "Panama v England",
@@ -1365,7 +1365,7 @@ MATCHES_SCHEDULE = [
         "mode": "croatia_vs_ghana",
         "team_1": "Croatia",
         "team_2": "Ghana",
-        "kickoff_adt": "18:00:00",
+        "kickoff_utc_iso": "2026-06-27T21:00:00Z",
         "keywords": [
             "Croatia vs Ghana",
             "Croatia v Ghana",
@@ -1395,7 +1395,7 @@ MATCHES_SCHEDULE = [
         "mode": "colombia_vs_portugal",
         "team_1": "Colombia",
         "team_2": "Portugal",
-        "kickoff_adt": "20:30:00",
+        "kickoff_utc_iso": "2026-06-27T23:30:00Z",
         "keywords": [
             "Colombia vs Portugal",
             "Colombia v Portugal",
@@ -1425,7 +1425,7 @@ MATCHES_SCHEDULE = [
         "mode": "dr_congo_vs_uzbekistan",
         "team_1": "DR Congo",
         "team_2": "Uzbekistan",
-        "kickoff_adt": "20:30:00",
+        "kickoff_utc_iso": "2026-06-27T23:30:00Z",
         "keywords": [
             "DR Congo vs Uzbekistan",
             "DR Congo v Uzbekistan",
@@ -1460,7 +1460,7 @@ MATCHES_SCHEDULE = [
         "mode": "algeria_vs_austria",
         "team_1": "Algeria",
         "team_2": "Austria",
-        "kickoff_adt": "23:00:00",
+        "kickoff_utc_iso": "2026-06-28T02:00:00Z",
         "keywords": [
             "Algeria vs Austria",
             "Algeria v Austria",
@@ -1490,7 +1490,7 @@ MATCHES_SCHEDULE = [
         "mode": "jordan_vs_argentina",
         "team_1": "Jordan",
         "team_2": "Argentina",
-        "kickoff_adt": "23:00:00",
+        "kickoff_utc_iso": "2026-06-28T02:00:00Z",
         "keywords": [
             "Jordan vs Argentina",
             "Jordan v Argentina",

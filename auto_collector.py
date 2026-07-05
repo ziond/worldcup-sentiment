@@ -1,12 +1,14 @@
 # ============================================================
 # auto_collector.py
 # Fully automated daily match collector.
-# Run once per day — reads today's matches from matches.py,
+# Run once per day — reads today's matches from group_schedule.py,
 # sleeps until 5 minutes before each kickoff, discovers live
 # streams via hybrid search + playlist method, and collects
 # chat data for all found streams using staggered A/B/C polling.
+# Required env vars: YOUTUBE_API_KEY, FOOTBALL_DATA_API_KEY
 # ============================================================
 
+import sys
 import time
 import threading
 import os
@@ -14,18 +16,20 @@ from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 
+sys.stdout.reconfigure(encoding='utf-8')
+
 from channels import CHANNELS
-from matches import MATCHES_SCHEDULE
-from youtube_collector import collect_stream
+from group_schedule import MATCHES_SCHEDULE
+from scorer import score_batch
+from database import insert_message
 
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-MAX_MATCH_MINUTES = 120
+MAX_MATCH_MINUTES = 150
 MAX_SEARCH_CALLS = 5
 
-# Kickoff times in matches.py are UTC. ADT = UTC-3.
-# To get "today in ADT": subtract 3h from now_utc and take .date()
+# ADT = UTC-3, used only for display in _fmt_now()
 _ADT = timedelta(hours=3)
 
 _SAVED_IDS   = {ch["id"] for ch in CHANNELS}
@@ -43,17 +47,21 @@ def _fmt_now() -> str:
 
 
 def _kickoff_utc(match: dict) -> datetime:
-    return datetime.fromisoformat(match["kickoff_utc"].replace("Z", "+00:00"))
+    return datetime.fromisoformat(match["kickoff_utc_iso"].replace("Z", "+00:00"))
 
 
 # ── schedule helpers ────────────────────────────────────────────────────────────
 
 def _today_matches() -> list:
-    """Return today's matches (by ADT date), sorted by kickoff ascending."""
-    today_adt = (_now_utc() - _ADT).date()
+    """Return today's matches by ADT date (the 'date' field), including any in progress."""
+    now = datetime.now(timezone.utc)
+    today_adt = (now - _ADT).date()
     matches = [
         m for m in MATCHES_SCHEDULE
-        if (_kickoff_utc(m) - _ADT).date() == today_adt
+        if (
+            datetime.strptime(m["date"], "%Y-%m-%d").date() == today_adt
+            or (_kickoff_utc(m) <= now < _kickoff_utc(m) + timedelta(minutes=MAX_MATCH_MINUTES))
+        )
     ]
     return sorted(matches, key=_kickoff_utc)
 
@@ -250,10 +258,96 @@ def discover_streams(youtube, match: dict, search_counter: list) -> tuple:
 
 # ── collection helpers ──────────────────────────────────────────────────────────
 
-def _collect_with_delay(video_id: str, match_id: str, tracker: list, delay: int):
+def collect_stream_staggered(video_id: str, match_id: str,
+                              match_minute_tracker: list, poll_interval: int = 180):
+    yt = build("youtube", "v3", developerKey=API_KEY)
+
+    # Wait until stream has an active live chat
+    while True:
+        resp = yt.videos().list(
+            part="liveStreamingDetails,snippet",
+            id=video_id
+        ).execute()
+        item = resp["items"][0]
+        details = item.get("liveStreamingDetails", {})
+        if "activeLiveChatId" in details:
+            live_chat_id = details["activeLiveChatId"]
+            stream_title = f"{item['snippet']['channelTitle']} — {item['snippet']['title']}"
+            break
+        print(f"[{video_id}] Stream not live yet — retrying in 10 mins")
+        time.sleep(600)
+
+    print(f"[{video_id}] Connected: {stream_title}")
+
+    def _execute_with_retry(request, max_retries=5):
+        for attempt in range(max_retries):
+            try:
+                return request.execute()
+            except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
+                if attempt == max_retries - 1:
+                    raise
+                wait = 30 * (attempt + 1)
+                print(f"[{video_id}] Network error ({e}), retrying in {wait}s...")
+                time.sleep(wait)
+
+    # Wait for first messages
+    next_page_token = None
+    while True:
+        response = _execute_with_retry(
+            yt.liveChatMessages().list(
+                liveChatId=live_chat_id,
+                part="snippet,authorDetails",
+                pageToken=next_page_token
+            )
+        )
+        messages = [
+            m for m in response.get("items", [])
+            if m["snippet"]["type"] == "textMessageEvent"
+        ]
+        if messages:
+            break
+        print(f"[{video_id}] No messages yet — checking again in 10 mins")
+        time.sleep(600)
+
+    # Main collection loop
+    while True:
+        response = _execute_with_retry(
+            yt.liveChatMessages().list(
+                liveChatId=live_chat_id,
+                part="snippet,authorDetails",
+                pageToken=next_page_token
+            )
+        )
+        messages = [
+            m for m in response.get("items", [])
+            if m["snippet"]["type"] == "textMessageEvent"
+        ]
+        if messages:
+            texts  = [m["snippet"]["displayMessage"] for m in messages]
+            scores = score_batch(texts)
+            for m, score in zip(messages, scores):
+                insert_message(
+                    match_id          = match_id,
+                    source            = "youtube",
+                    stream_id         = video_id,
+                    stream_title      = stream_title,
+                    timestamp         = datetime.now(timezone.utc).isoformat(),
+                    message_timestamp = m["snippet"]["publishedAt"],
+                    match_minute      = match_minute_tracker[0],
+                    author            = m["authorDetails"]["displayName"],
+                    text              = m["snippet"]["displayMessage"],
+                    scores            = score
+                )
+        next_page_token = response.get("nextPageToken")
+        print(f"[{video_id}] Fetched {len(messages)} messages — waiting {poll_interval}s")
+        time.sleep(poll_interval)
+
+
+def _collect_with_delay(video_id: str, match_id: str, tracker: list,
+                        delay: int, poll_interval: int = 180):
     if delay > 0:
         time.sleep(delay)
-    collect_stream(video_id, match_id, tracker)
+    collect_stream_staggered(video_id, match_id, tracker, poll_interval)
 
 
 def _pending_checker(youtube_key: str, pending: list, match_id: str,
@@ -262,7 +356,7 @@ def _pending_checker(youtube_key: str, pending: list, match_id: str,
                      stop_event: threading.Event):
     """
     Background thread: every 10 minutes checks pending streams via videos.list (not search).
-    When a stream goes live, spins up a collect_stream thread in its pre-assigned group.
+    When a stream goes live, spins up a collect_stream_staggered thread in its pre-assigned group.
     """
     yt = build("youtube", "v3", developerKey=youtube_key)
 
@@ -293,7 +387,7 @@ def _pending_checker(youtube_key: str, pending: list, match_id: str,
                                   f"(group delay {delay}s)")
                             t = threading.Thread(
                                 target=_collect_with_delay,
-                                args=(p["video_id"], match_id, tracker, delay),
+                                args=(p["video_id"], match_id, tracker, delay, 180),
                                 daemon=True
                             )
                             t.start()
@@ -356,7 +450,7 @@ def run_match(youtube, match: dict, minute_start: int, next_kickoff):
         delay = group_delay_map[stream["video_id"]]
         t = threading.Thread(
             target=_collect_with_delay,
-            args=(stream["video_id"], match_id, match_minute_tracker, delay),
+            args=(stream["video_id"], match_id, match_minute_tracker, delay, 180),
             daemon=True
         )
         t.start()
@@ -373,20 +467,25 @@ def run_match(youtube, match: dict, minute_start: int, next_kickoff):
         )
         pt.start()
 
-    # Tick match minute — stop at cap or 5 minutes before next kickoff
-    while match_minute_tracker[0] < MAX_MATCH_MINUTES:
+    # Tick match minute — stop at minute 150 or when next match is close
+    while True:
+        # Hard stop at minute 150
+        if match_minute_tracker[0] >= MAX_MATCH_MINUTES:
+            print(f"[{label}] Minute {MAX_MATCH_MINUTES} reached — stopping")
+            stop_event.set()
+            return
+
+        # Yield to next match if it's starting soon
         if next_kickoff:
             secs_to_next = (next_kickoff - _now_utc()).total_seconds()
             if secs_to_next <= 300:
-                print(f"[{label}] Next match in {int(secs_to_next)}s — stopping collection")
+                print(f"[{label}] Next match in {int(secs_to_next)}s — stopping")
                 stop_event.set()
                 return
+
         time.sleep(60)
         match_minute_tracker[0] += 1
         print(f"Match minute: {match_minute_tracker[0]}")
-
-    stop_event.set()
-    print(f"[{label}] Match complete after {MAX_MATCH_MINUTES} minutes")
 
 
 # ── daily scheduler ─────────────────────────────────────────────────────────────
@@ -412,7 +511,7 @@ def run_daily_collector():
         label       = f"{match['team_1']} vs {match['team_2']}"
 
         if elapsed_min > MAX_MATCH_MINUTES:
-            print(f"  [SKIP] {label} — ended {int(elapsed_min)}m ago")
+            print(f"  [SKIP] {label} — already finished")
         elif elapsed_min >= 0:
             minute_start = int(elapsed_min)
             print(f"  [IN PROGRESS] {label} at minute {minute_start} — joining immediately")
