@@ -15,6 +15,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 GOAL_WORDS = ["goal", "gol", "but", "goall", "goool", "scored", "scores"]
 VAR_WORDS  = ["var", "offside", "penalty", "pen ", "referee", "foul"]
 
+GOAL_WORDS += ["golazo", "siuuu", "get in", "worldie", "scenes", "goalllll"]
+VAR_WORDS  += ["handball", "check complete", "red card", "sent off"]
+
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
@@ -105,18 +108,41 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_source ON messages(source);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_stream ON messages(stream_id);")
 
+    # Additive migration — new enrichment columns (safe on live/populated tables)
+    cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS goal_excitement INTEGER;")
+    cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS flag_emojis TEXT;")
+    cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS language TEXT;")
+    cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text';")
+    cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS superchat_amount TEXT;")
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS stream_stats (
+            id                 SERIAL PRIMARY KEY,
+            match_id           TEXT,
+            stream_id          TEXT,
+            timestamp          TIMESTAMPTZ,
+            concurrent_viewers INTEGER
+        );
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_stream_stats_match_stream ON stream_stats(match_id, stream_id);")
+
     conn.commit()
     cursor.close()
     conn.close()
 
 def insert_message(match_id: str, source: str, stream_id: str, stream_title: str,
                    timestamp: str, message_timestamp: str, match_minute: int,
-                   author: str, text: str, scores: dict):
+                   author: str, text: str, scores: dict,
+                   message_type: str = "text", superchat_amount: str = None):
 
     words       = text.split()
     caps_chars  = sum(1 for c in text if c.isupper())
     alpha_chars = sum(1 for c in text if c.isalpha())
     emoji_count = sum(1 for c in text if ord(c) > 127)
+
+    goal_excitement = scores.get("goal_excitement", 0)
+    flag_emojis     = scores.get("flag_emojis")
+    language        = scores.get("language")
 
     conn   = get_connection()
     cursor = conn.cursor()
@@ -130,7 +156,9 @@ def insert_message(match_id: str, source: str, stream_id: str, stream_title: str
             hf_label, hf_score,
             char_count, word_count, caps_ratio,
             exclamation_count, question_count, emoji_count,
-            has_goal_word, has_var_mention
+            has_goal_word, has_var_mention,
+            goal_excitement, flag_emojis, language,
+            message_type, superchat_amount
         ) VALUES (
             %s,%s,%s,%s,
             %s,%s,%s,
@@ -138,6 +166,8 @@ def insert_message(match_id: str, source: str, stream_id: str, stream_title: str
             %s,%s,%s,%s,
             %s,%s,
             %s,%s,%s,
+            %s,%s,%s,
+            %s,%s,
             %s,%s,%s,
             %s,%s
         )
@@ -152,8 +182,24 @@ def insert_message(match_id: str, source: str, stream_id: str, stream_title: str
         round(caps_chars / alpha_chars, 3) if alpha_chars > 0 else 0.0,
         text.count("!"), text.count("?"), emoji_count,
         1 if any(w in text.lower() for w in GOAL_WORDS) else 0,
-        1 if any(w in text.lower() for w in VAR_WORDS) else 0
+        1 if any(w in text.lower() for w in VAR_WORDS) else 0,
+        goal_excitement, flag_emojis, language,
+        message_type, superchat_amount
     ))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+
+def insert_stream_stats(match_id: str, stream_id: str, timestamp: str, concurrent_viewers: int):
+    conn   = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO stream_stats (match_id, stream_id, timestamp, concurrent_viewers)
+        VALUES (%s, %s, %s, %s)
+    """, (match_id, stream_id, timestamp, concurrent_viewers))
 
     conn.commit()
     cursor.close()
