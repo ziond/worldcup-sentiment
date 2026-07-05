@@ -21,7 +21,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 from channels import CHANNELS
 from group_schedule import MATCHES_SCHEDULE
 from scorer import score_batch
-from database import insert_message
+from database import insert_message, insert_stream_stats
 
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -258,6 +258,34 @@ def discover_streams(youtube, match: dict, search_counter: list) -> tuple:
 
 # ── collection helpers ──────────────────────────────────────────────────────────
 
+def _classify_event(m: dict):
+    """
+    Return (text, message_type) for a usable chat event, or None to skip.
+    Default path (textMessageEvent) is unchanged from before; superchat/membership
+    events are additionally captured now instead of being dropped.
+    """
+    snippet = m.get("snippet", {}) or {}
+    event_type = snippet.get("type")
+    text = snippet.get("displayMessage")
+
+    if event_type == "textMessageEvent":
+        return (text, "text") if text else None
+
+    if event_type == "superChatEvent":
+        if not text:
+            text = snippet.get("superChatDetails", {}).get("amountDisplayString")
+        return (text, "superchat") if text else None
+
+    if event_type in ("newSponsorEvent", "memberMilestoneChatEvent", "membershipGiftingEvent"):
+        return (text, "membership") if text else None
+
+    return None
+
+
+def _superchat_amount(m: dict):
+    return m.get("snippet", {}).get("superChatDetails", {}).get("amountDisplayString")
+
+
 def collect_stream_staggered(video_id: str, match_id: str,
                               match_minute_tracker: list, poll_interval: int = 180):
     yt = build("youtube", "v3", developerKey=API_KEY)
@@ -302,7 +330,7 @@ def collect_stream_staggered(video_id: str, match_id: str,
         )
         messages = [
             m for m in response.get("items", [])
-            if m["snippet"]["type"] == "textMessageEvent"
+            if m.get("snippet", {}).get("type") == "textMessageEvent"
         ]
         if messages:
             break
@@ -318,28 +346,34 @@ def collect_stream_staggered(video_id: str, match_id: str,
                 pageToken=next_page_token
             )
         )
-        messages = [
-            m for m in response.get("items", [])
-            if m["snippet"]["type"] == "textMessageEvent"
-        ]
-        if messages:
-            texts  = [m["snippet"]["displayMessage"] for m in messages]
+        events = []
+        for m in response.get("items", []):
+            classified = _classify_event(m)
+            if classified:
+                events.append((m, classified[0], classified[1]))
+
+        if events:
+            texts  = [text for _, text, _ in events]
             scores = score_batch(texts)
-            for m, score in zip(messages, scores):
+            for (m, text, msg_type), score in zip(events, scores):
+                snippet = m.get("snippet", {})
+                author_details = m.get("authorDetails", {})
                 insert_message(
                     match_id          = match_id,
                     source            = "youtube",
                     stream_id         = video_id,
                     stream_title      = stream_title,
                     timestamp         = datetime.now(timezone.utc).isoformat(),
-                    message_timestamp = m["snippet"]["publishedAt"],
+                    message_timestamp = snippet.get("publishedAt"),
                     match_minute      = match_minute_tracker[0],
-                    author            = m["authorDetails"]["displayName"],
-                    text              = m["snippet"]["displayMessage"],
-                    scores            = score
+                    author            = author_details.get("displayName", "unknown"),
+                    text              = text,
+                    scores            = score,
+                    message_type      = msg_type,
+                    superchat_amount  = _superchat_amount(m) if msg_type == "superchat" else None
                 )
         next_page_token = response.get("nextPageToken")
-        print(f"[{video_id}] Fetched {len(messages)} messages — waiting {poll_interval}s")
+        print(f"[{video_id}] Fetched {len(events)} messages — waiting {poll_interval}s")
         time.sleep(poll_interval)
 
 
@@ -405,6 +439,57 @@ def _pending_checker(youtube_key: str, pending: list, match_id: str,
     print("[PENDING] Checker thread exiting")
 
 
+def _stream_stats_poller(youtube_key: str, match_id: str, connected_ids: set,
+                          lock: threading.Lock, stop_event: threading.Event,
+                          poll_interval: int = 180):
+    """
+    Background thread: once per poll cycle, fetches concurrentViewers for ALL
+    currently active streams in ONE videos.list call (1 quota unit total,
+    regardless of stream count) and logs one stream_stats row per stream.
+    Fail-safe: any error here skips the stats row and never touches chat polling.
+    """
+    yt = build("youtube", "v3", developerKey=youtube_key)
+
+    while not stop_event.is_set():
+        time.sleep(poll_interval)
+        if stop_event.is_set():
+            break
+
+        with lock:
+            ids = list(connected_ids)
+        if not ids:
+            continue
+
+        try:
+            resp = yt.videos().list(
+                part="liveStreamingDetails",
+                id=",".join(ids)
+            ).execute()
+        except Exception as e:
+            print(f"[STATS ERR] {e}")
+            continue
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        for item in resp.get("items", []):
+            try:
+                viewers = int(
+                    item.get("liveStreamingDetails", {}).get("concurrentViewers", 0) or 0
+                )
+            except (ValueError, TypeError):
+                viewers = 0
+            try:
+                insert_stream_stats(
+                    match_id=match_id,
+                    stream_id=item.get("id"),
+                    timestamp=now_iso,
+                    concurrent_viewers=viewers
+                )
+            except Exception as e:
+                print(f"[STATS DB ERR] {e}")
+
+    print("[STATS] Poller thread exiting")
+
+
 # ── match runner ────────────────────────────────────────────────────────────────
 
 def run_match(youtube, match: dict, minute_start: int, next_kickoff):
@@ -466,6 +551,14 @@ def run_match(youtube, match: dict, minute_start: int, next_kickoff):
             daemon=True
         )
         pt.start()
+
+    # Background viewer-stats poller (batched, 1 quota unit per cycle regardless of stream count)
+    st_thread = threading.Thread(
+        target=_stream_stats_poller,
+        args=(API_KEY, match_id, connected_ids, lock, stop_event, 180),
+        daemon=True
+    )
+    st_thread.start()
 
     # Tick match minute — stop at minute 150 or when next match is close
     while True:
