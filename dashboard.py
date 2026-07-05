@@ -4,6 +4,7 @@
 # Upgraded to an ultra-modern, minimalist, dark-mode design.
 # ============================================
 
+import re
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -96,9 +97,9 @@ def get_match_stats(match_id: str) -> dict:
     cur.execute("""
         SELECT
             COUNT(*) as total,
-            SUM(CASE WHEN hf_label = 'POSITIVE' THEN 1 ELSE 0 END) as positive,
-            SUM(CASE WHEN hf_label = 'NEGATIVE' THEN 1 ELSE 0 END) as negative,
-            SUM(CASE WHEN hf_label = 'NEUTRAL'  THEN 1 ELSE 0 END) as neutral
+            SUM(CASE WHEN UPPER(hf_label) = 'POSITIVE' THEN 1 ELSE 0 END) as positive,
+            SUM(CASE WHEN UPPER(hf_label) = 'NEGATIVE' THEN 1 ELSE 0 END) as negative,
+            SUM(CASE WHEN UPPER(hf_label) = 'NEUTRAL'  THEN 1 ELSE 0 END) as neutral
         FROM messages
         WHERE match_id = %s
     """, (match_id,))
@@ -110,12 +111,13 @@ def get_match_stats(match_id: str) -> dict:
 def get_stream_data(match_id: str, stream_id: str) -> pd.DataFrame:
     conn = get_connection()
     df = pd.read_sql("""
-        SELECT match_minute, hf_label, hf_score, text, author
+        SELECT match_minute, hf_label, hf_score, vader_compound, text, author
         FROM messages
         WHERE match_id = %s AND stream_id = %s
         ORDER BY id ASC
     """, conn, params=(match_id, stream_id))
     conn.close()
+    df["hf_label"] = df["hf_label"].str.upper()
     return df
 
 
@@ -128,14 +130,34 @@ if not matches:
     st.warning("No match data yet.")
     st.stop()
 
-# Build mode → matchday lookup from schedule
+# Build mode → matchday/label lookups from schedule
 _mode_to_matchday = {m["mode"]: m["matchday"] for m in MATCHES_SCHEDULE}
+_mode_to_label    = {m["mode"]: f"{m['team_1']} vs {m['team_2']}" for m in MATCHES_SCHEDULE}
 _schedule_modes   = set(_mode_to_matchday)
 
 test_ids = [mid for mid in matches if mid not in _schedule_modes]
-md1_ids  = [mid for mid in matches if "Matchday 1" in _mode_to_matchday.get(mid, "")]
-md2_ids  = [mid for mid in matches if "Matchday 2" in _mode_to_matchday.get(mid, "")]
-md3_ids  = [mid for mid in matches if "Matchday 3" in _mode_to_matchday.get(mid, "")]
+
+
+def _short_stage_label(stage: str) -> str:
+    """Trim parenthetical suffixes, e.g. 'Matchday 3 (Simultaneous Final Group Games)' -> 'Matchday 3'."""
+    return re.sub(r"\s*\(.*\)\s*$", "", stage).strip()
+
+
+def _stage_icon(stage: str) -> str:
+    return "📅" if stage.startswith("Matchday") else "🏆"
+
+
+def _slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
+
+
+# Stages in order of first appearance in the schedule (future stages appear automatically)
+_stages = []
+_seen_stages = set()
+for m in MATCHES_SCHEDULE:
+    if m["matchday"] not in _seen_stages:
+        _seen_stages.add(m["matchday"])
+        _stages.append(m["matchday"])
 
 
 def render_match(match_id: str, tab_key: str = ""):
@@ -174,7 +196,7 @@ def render_match(match_id: str, tab_key: str = ""):
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            chart_df = df.groupby("match_minute")["hf_score"].mean().reset_index()
+            chart_df = df.groupby("match_minute")["vader_compound"].mean().reset_index()
             chart_df.columns = ["Minute", "Avg Sentiment"]
 
             # color each bar based on sentiment
@@ -214,8 +236,8 @@ def render_match(match_id: str, tab_key: str = ""):
                 xaxis=dict(
                     showgrid=False,
                     tickmode="linear",
-                    tick0=1,
-                    dtick=1,
+                    tick0=0,
+                    dtick=5,
                     tickfont=dict(color="#8b949e", size=10),
                     title=dict(text="Match Minute", font=dict(color="#8b949e", size=10))
                 ),
@@ -243,14 +265,15 @@ def render_match(match_id: str, tab_key: str = ""):
             feed_data = []
             colors = {"POSITIVE": "🟢", "NEGATIVE": "🔴", "NEUTRAL": "⚪"}
 
+            sign_map = {"POSITIVE": 1, "NEGATIVE": -1, "NEUTRAL": 0}
             for _, row in df.tail(12).iloc[::-1].iterrows():
                 emoji = colors.get(row["hf_label"], "⚪")
-                # Format rows nicely
+                signed_score = row["hf_score"] * sign_map.get(row["hf_label"], 0)
                 feed_data.append({
                     "Status": emoji,
                     "Username": row['author'],
                     "Message": row['text'],
-                    "Score": f"{row['hf_score']:+.2f}"
+                    "Score": f"{signed_score:+.2f}"
                 })
 
             if feed_data:
@@ -272,36 +295,34 @@ def render_match(match_id: str, tab_key: str = ""):
         st.markdown("<br><br>", unsafe_allow_html=True)
 
 
-# --- TABBED MATCH SELECTOR ---
-tabs = st.tabs(["🧪 Test Streams", "📅 Matchday 1", "📅 Matchday 2", "📅 Matchday 3"])
+# --- TABBED MATCH SELECTOR (data-driven from group_schedule.py) ---
+tab_titles = ["🧪 Test Streams"] + [
+    f"{_stage_icon(stage)} {_short_stage_label(stage)}" for stage in _stages
+]
+tabs = st.tabs(tab_titles)
 
 with tabs[0]:
     if not test_ids:
         st.info("No data collected yet for this matchday.")
     else:
-        match_id = st.selectbox("Select Match", test_ids, label_visibility="collapsed", key="select_test")
+        match_id = st.selectbox(
+            "Select Match", test_ids, label_visibility="collapsed", key="select_test",
+            format_func=lambda mid: _mode_to_label.get(mid, mid)
+        )
         render_match(match_id, tab_key="test")
 
-with tabs[1]:
-    if not md1_ids:
-        st.info("No data collected yet for this matchday.")
-    else:
-        match_id = st.selectbox("Select Match", md1_ids, label_visibility="collapsed", key="select_md1")
-        render_match(match_id, tab_key="md1")
-
-with tabs[2]:
-    if not md2_ids:
-        st.info("No data collected yet for this matchday.")
-    else:
-        match_id = st.selectbox("Select Match", md2_ids, label_visibility="collapsed", key="select_md2")
-        render_match(match_id, tab_key="md2")
-
-with tabs[3]:
-    if not md3_ids:
-        st.info("No data collected yet for this matchday.")
-    else:
-        match_id = st.selectbox("Select Match", md3_ids, label_visibility="collapsed", key="select_md3")
-        render_match(match_id, tab_key="md3")
+for _i, _stage in enumerate(_stages):
+    _stage_ids = [mid for mid in matches if _mode_to_matchday.get(mid) == _stage]
+    with tabs[_i + 1]:
+        if not _stage_ids:
+            st.info("No data collected yet for this matchday.")
+        else:
+            _tab_key = _slug(_stage)
+            match_id = st.selectbox(
+                "Select Match", _stage_ids, label_visibility="collapsed", key=f"select_{_tab_key}",
+                format_func=lambda mid: _mode_to_label.get(mid, mid)
+            )
+            render_match(match_id, tab_key=_tab_key)
 
 # --- AUTO REFRESH AUTOMATION ---
 st.markdown("<hr style='border-color: #21262d;'/>", unsafe_allow_html=True)
